@@ -64,16 +64,18 @@ nav .on{color:var(--accent);background:var(--bg)}
 #toast{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;display:none;font-size:14px}
 .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}.sw{border:0;border-radius:14px;padding:8px;color:var(--ink);background:var(--bg);box-shadow:0 0 0 1px var(--line);font-size:13px}.sw i{display:block;height:34px;border-radius:9px;margin-bottom:6px;border:1px solid var(--line)}.sw.on{box-shadow:0 0 0 2px var(--accent);font-weight:700}
 summary{cursor:pointer;margin:20px 0 8px;font-size:15px;font-weight:700}
+a.pill{text-decoration:none;display:inline-block}
 .row-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 textarea{min-height:90px;font-size:13px}
 </style></head><body>
 <main id="app"></main><div id="toast" role="status"></div>
-<nav><button data-t="grades">Grades</button><button data-t="gpa">GPA</button><button data-t="settings">Settings</button></nav>
+<nav><button data-t="grades">Grades</button><button data-t="gpa">GPA</button><button data-t="connect">Connect</button><button data-t="settings">Settings</button></nav>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),uid=()=>Math.random().toString(36).slice(2,9),num=v=>{const n=parseFloat(v);return isNaN(n)?null:n};
 const DEF={classes:[],scale:{A:90,B:80,C:70,D:60},bonus:{Regular:0,Honors:.5,AP:1},sync:{proxy:'',base:'',district:'',user:''}};
 let S=(()=>{try{const s=JSON.parse(localStorage.getItem('gl1'));return s?{...DEF,...s}:structuredClone(DEF)}catch{return structuredClone(DEF)}})(),view={t:'grades',id:null},WI={};
 const save=()=>{try{localStorage.setItem('gl1',JSON.stringify(S))}catch{}};
+S.sync=S.sync||{};S.sync.base=S.sync.base||'https://eastchesterny.infinitecampus.org/campus/portal/students/eastchester.jsp';S.sync.district=S.sync.district||'eastchester';
 const THEMES=[['auto','Auto','#f2f4f8','#0f1524','#2b59ff'],['light','Light','#f2f4f8','#fff','#2b59ff'],['dark','Dark','#0f1524','#18203a','#7a99ff'],['midnight','Midnight','#000','#111318','#a78bfa'],['ocean','Ocean','#0b2530','#11374a','#4cc9f0'],['forest','Forest','#eef3ea','#fbfdf8','#2f7d4f'],['sunset','Sunset','#fff3ea','#fff','#e4572e']];
 const curTheme=()=>{try{return localStorage.getItem('gl-theme')||'auto'}catch{return'auto'}};
 function applyMeta(){const m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#14213d'}
@@ -98,7 +100,7 @@ const ring=p=>`<div class="ring" style="--p:${p==null?0:Math.min(100,p)};--c:var
 const gpaBox=g=>g?`<section class="gpa"><div><small>Weighted GPA</small><b>${g.w.toFixed(2)}</b></div><div><small>Unweighted GPA</small><b>${g.u.toFixed(2)}</b></div></section>`:'';
 function row(c){const p=calc(c),a=calc(c,false),d=p!=null&&a!=null?p-a:0;
  return `<button class="row" data-a="open" data-id="${c.id}">${ring(p)}<span><h3>${esc(c.name)}</h3><small>${esc(c.teacher?c.teacher+', ':'')}${c.lv}</small></span>${Math.abs(d)>.05?`<em class="${d>0?'up':'dn'}">${d>0?'+':''}${d.toFixed(1)}</em>`:''}</button>`}
-function grades(){const g=gpa(),b=S.sync.base||'',ok=/^https:\/\//.test(b);return `<header><h1>Grades</h1><button class="pill" data-a="importnow">Import</button><button class="pill" data-a="addc">Add</button></header>${gpaBox(g)}${S.classes.length?'':'<section class="card"><b>Get your grades in</b><p class="hint">1. Open Settings and add the Import bookmark (one time).<br>2. Sign in to Infinite Campus in Safari and tap the bookmark.<br>3. Come back here and tap Import.</p></section>'}${S.classes.map(row).join('')}<p class="hint">${S.last?'Imported '+new Date(S.last).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})+'. ':''}${ok?`<a href="${esc(b)}" target="_blank" rel="noopener" style="color:var(--accent)">Open Infinite Campus</a>`:''}</p>`}
+function grades(){const g=gpa(),b=S.sync.base||'',ok=/^https:\/\//.test(b);return `<header><h1>Grades</h1><button class="pill" data-a="importnow">Import</button><button class="pill" data-a="addc">Add</button></header>${gpaBox(g)}${S.classes.length?'':'<section class="card"><b>Get your grades in</b><p class="hint">Open the Connect tab. It walks you through a one-time bookmark setup, then signing in with Google and tapping Import.</p></section>'}${S.classes.map(row).join('')}<p class="hint">${S.last?'Imported '+new Date(S.last).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})+'. ':''}${ok?`<a href="${esc(b)}" target="_blank" rel="noopener" style="color:var(--accent)">Open Infinite Campus</a>`:''}</p>`}
 function detail(c){
  if(!c){view.id=null;return grades()}
  const p=calc(c),a=calc(c,false),real=c.items.some(i=>!i.mock),cs=c.cats.length?`<select id="nc">${c.cats.map(k=>`<option>${esc(k.n)}</option>`).join('')}</select>`:'';
@@ -120,25 +122,29 @@ function settings(){const y=S.sync,sc=S.scale,b=S.bonus;
  <h2>Theme</h2><section class="card themes">${THEMES.map(t=>`<button class="sw${t[0]===curTheme()?' on':''}" data-a="theme" data-v="${t[0]}"><i style="background:${t[0]==='auto'?`linear-gradient(120deg,${t[2]} 50%,${t[3]} 50%)`:`linear-gradient(120deg,${t[2]} 0 45%,${t[3]} 45% 70%,${t[4]} 70%)`}"></i>${t[1]}</button>`).join('')}</section>
  <h2>Grade scale (minimum % for each letter)</h2><section class="card two">${['A','B','C','D'].map(k=>`<label>${k}<input type="number" value="${sc[k]}" data-f="s" data-k="${k}"></label>`).join('')}</section>
  <h2>Weighted GPA bonus</h2><section class="card two">${['Honors','AP'].map(k=>`<label>${k}<input type="number" step="0.1" value="${b[k]}" data-f="b" data-k="${k}"></label>`).join('')}</section>
- <h2>Import from Infinite Campus</h2><section class="card"><p class="hint">Works with Google sign-in. One time: add the bookmark code below as a Safari bookmark. After that, sign in to Infinite Campus, tap the bookmark, and tap Import on the Grades tab. With a relay URL (see relay.js), your grades update by themselves: tap the bookmark, then just open Gradeline.</p>
- <label>Portal address<input value="${esc(y.base)}" placeholder="https://campus.yourdistrict.org" data-f="sy" data-k="base"></label>
- <label>Relay URL (optional, makes it one tap)<input value="${esc(y.relay||'')}" placeholder="https://gradeline-relay.you.workers.dev" data-f="sy" data-k="relay"></label>
- <label style="margin-top:10px">Bookmark code${y.relay&&y.key?' (one-tap version)':''}<textarea id="bm" readonly>${esc(bmCode())}</textarea></label><div class="row-btns"><button class="pill" data-a="copybm">Copy bookmark code</button></div>
- <label style="margin-top:14px">Paste grades here<textarea id="ic" placeholder="GRADELINE:[..."></textarea></label><div class="row-btns"><button class="pill" data-a="pasteic">Paste from clipboard</button><button class="pill" data-a="importic">Import</button></div></section>
  <details><summary>Advanced: username and password sync (needs a proxy)</summary><section class="card form"><p class="hint wide">Needs your own grade proxy (worker.js, free on Cloudflare). Your password is sent only to that proxy and is never saved here.</p>
  <label class="wide">Proxy URL<input value="${esc(y.proxy)}" placeholder="https://gradeline.you.workers.dev" data-f="sy" data-k="proxy"></label>
   <label>District name (appName)<input value="${esc(y.district)}" data-f="sy" data-k="district"></label><label>Username<input value="${esc(y.user)}" autocomplete="username" data-f="sy" data-k="user"></label>
  <label class="wide">Password<input id="pw" type="password" autocomplete="current-password"></label><button class="pill wide" data-a="sync">Sync grades</button></section></details>
  <h2>Your data</h2><section class="card"><textarea id="dj" placeholder="Export fills this box. Paste a backup here and choose Import."></textarea>
  <div class="row-btns"><button class="pill" data-a="export">Export</button><button class="pill" data-a="import">Import</button><button class="pill" data-a="demo">Load sample data</button><button class="pill bad" data-a="clear">Erase everything</button></div></section>`}
-function render(){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===view.t));$('#app').innerHTML=view.id?detail(cur()):({grades,gpa:gpaV,settings})[view.t]()}
+function connect(){const y=S.sync;return `<header><h1>Connect</h1></header>
+ <p class="hint">Gradeline can't type your Google login for you, so it borrows the page you are already signed in to. Set it up once, then fresh grades take a few taps.</p>
+ <h2>One time</h2><section class="card"><p class="hint">1. Tap Copy bookmark code.<br>2. In Safari, bookmark any page (Share, then Add Bookmark). Open Bookmarks, tap Edit, tap that bookmark, name it Gradeline, and replace its address with the code (press and hold in the address box, then Paste).<br>3. Tap Done.</p><div class="row-btns"><button class="pill" data-a="copybm">Copy bookmark code</button></div></section>
+ <h2>Whenever you want fresh grades</h2><section class="card"><p class="hint">4. In Safari, open your school login and sign in with Google.<br>5. Tap Bookmarks, then Gradeline, and wait for the copied message.<br>6. Come back to Gradeline and tap Import.</p><div class="row-btns"><a class="pill" href="${esc(y.base||'#')}" target="_blank" rel="noopener">Open school login</a><button class="pill" data-a="importnow">Import</button></div><p class="hint">Tip: if the link opens inside this app, bookmark your school login in Safari and use that instead.</p></section>
+ <details><summary>More options</summary><section class="card form">
+ <label class="wide">School login address<input value="${esc(y.base||'')}" data-f="sy" data-k="base"></label>
+ <label class="wide">Relay URL (optional, makes it one tap; see relay.js)<input value="${esc(y.relay||'')}" placeholder="https://gradeline-relay.you.workers.dev" data-f="sy" data-k="relay"></label>
+ <label class="wide">Bookmark code${y.relay&&y.key?' (one-tap version)':''}<textarea id="bm" readonly>${esc(bmCode())}</textarea></label>
+ <label class="wide">Paste grades here<textarea id="ic" placeholder="GRADELINE:[..."></textarea></label><div class="row-btns wide"><button class="pill" data-a="pasteic">Paste from clipboard</button><button class="pill" data-a="importic">Import pasted grades</button></div></section></details>`}
+function render(){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===view.t));$('#app').innerHTML=view.id?detail(cur()):({grades,gpa:gpaV,connect,settings})[view.t]()}
 function mapIC(d){const out=[];for(const en of [].concat(d||[])){let pick=null;for(const t of en.terms||[])if((t.courses||[]).some(c=>(c.gradingTasks||[]).some(g=>g.progressPercent!=null)))pick=t;
  for(const c of pick?.courses||[]){const g=(c.gradingTasks||[]).filter(g=>g.progressPercent!=null).pop();out.push({name:c.courseName||c.sectionName||'Course',teacher:c.teacherDisplay||'',pct:g?g.progressPercent:null,sid:c.sectionID})}}return out}
 function merge(list){for(const x of list){let c=S.classes.find(c=>x.sid!=null&&c.sid==x.sid)||S.classes.find(c=>c.name===x.name);if(!c){c=mk(x.name);S.classes.push(c)}Object.assign(c,{sid:x.sid,teacher:x.teacher||'',pct:x.pct})}S.last=Date.now();save()}
 function importText(t){try{const l=JSON.parse(t.trim().replace(/^GRADELINE:/,''));if(!Array.isArray(l)||!l.length||!l.every(x=>x&&x.name))throw 0;merge(l);toast('Imported '+l.length+' classes.');view={t:'grades',id:null};render()}catch{toast('That does not look like text copied by the Gradeline bookmark.')}}
 const importIC=()=>importText($('#ic').value);
 async function pull(){const y=S.sync;if(!y.relay||!y.key)return false;try{const r=await fetch(y.relay.replace(/\/+$/,'')+'/get?k='+y.key,{cache:'no-store'});if(!r.ok)return false;const j=await r.json();if(!j||!Array.isArray(j.d)||j.t<=(S.relayT||0))return false;merge(j.d);S.relayT=j.t;save();toast('Grades updated from Infinite Campus.');return true}catch{return false}}
-async function importNow(){if(S.sync.relay&&S.sync.key){const ok=await pull();if(!ok)toast('No new grades yet. Tap the Gradeline bookmark in Infinite Campus first.');return render()}try{const t=await navigator.clipboard.readText();if(!/^\s*GRADELINE:/.test(t))return toast('Nothing to import yet. Tap the Gradeline bookmark in Infinite Campus first.');importText(t)}catch{view={t:'settings',id:null};render();toast('Paste your grades into the box and tap Import.')}}
+async function importNow(){if(S.sync.relay&&S.sync.key){const ok=await pull();if(!ok)toast('No new grades yet. Tap the Gradeline bookmark in Infinite Campus first.');return render()}try{const t=await navigator.clipboard.readText();if(!/^\s*GRADELINE:/.test(t))return toast('Nothing to import yet. Tap the Gradeline bookmark in Infinite Campus first.');importText(t)}catch{view={t:'connect',id:null};render();document.querySelector('details')?.setAttribute('open','');toast('Paste your grades into the box and tap Import.')}}
 async function sync(){const y=S.sync,pw=$('#pw').value;if(!y.proxy||!y.base||!y.district||!y.user||!pw)return toast('Fill in every sync field first.');toast('Syncing…');
  try{const r=await fetch(y.proxy,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({base:y.base.replace(/\/+$/,''),district:y.district,username:y.user,password:pw})});
   if(!r.ok)throw Error(r.status===401?'Login failed. Check username, password and district name.':'Proxy returned error '+r.status);
@@ -164,7 +170,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a],[data-t
  else if(a==='addi'||a==='addm'){c.items.push({id:uid(),n:'',c:'',e:null,t:100,mock:a==='addm'});save()}
  else if(a==='deli'){c.items=c.items.filter(i=>i.id!==b.dataset.i);save()}
  else if(a==='need')return need();
- else if(a==='copybm'){navigator.clipboard.writeText(bmCode()).then(()=>toast('Copied. Now add it as a Safari bookmark.')).catch(()=>{$('#bm').select();toast('Select all and copy the code.')});return}
+ else if(a==='copybm'){navigator.clipboard.writeText(bmCode()).then(()=>toast('Copied. Now add it as a Safari bookmark.')).catch(()=>{toast('Could not copy. Open More options and copy the code by hand.')});return}
  else if(a==='pasteic'){navigator.clipboard.readText().then(t=>{$('#ic').value=t}).catch(()=>toast('Press and hold the box, then choose Paste.'));return}
  else if(a==='importic')return importIC();
  else if(a==='importnow')return importNow();
